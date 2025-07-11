@@ -259,11 +259,11 @@ class QdrantVectorStore:
         try:
             info = self.client.get_collection(self.config.collection_name)
             return {
-                "name": info.name,
-                "status": info.status,
-                "vectors_count": info.vectors_count,
-                "indexed_vectors_count": info.indexed_vectors_count,
-                "config": asdict(info.config),
+                "name": self.config.collection_name,  # Use config name instead of info.name
+                "status": getattr(info, "status", "unknown"),
+                "vectors_count": getattr(info, "vectors_count", 0),
+                "indexed_vectors_count": getattr(info, "indexed_vectors_count", 0),
+                "config": getattr(info, "config", {}),
             }
         except Exception as e:
             logger.error(f"Failed to get collection info: {e}")

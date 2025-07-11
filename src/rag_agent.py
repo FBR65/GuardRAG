@@ -14,7 +14,6 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic import BaseModel, Field
 
 from .colpali_integration import COLPALIProcessor, RetrievalResult
-from .input_guardrail import InputGuardrail, ValidationResult
 from .output_guardrail import OutputGuardrail, OutputValidationResult
 from .qdrant_integration import QdrantConfig
 
@@ -52,7 +51,6 @@ class GuardRAGAgent:
         llm_api_key: str,
         llm_model: str = "qwen2.5:latest",
         colpali_model: str = "vidore/colqwen2.5-v0.2",
-        enable_input_guardrails: bool = True,
         enable_output_guardrails: bool = True,
         max_retrieval_results: int = 5,
         device: str = "cuda",
@@ -69,7 +67,6 @@ class GuardRAGAgent:
             llm_api_key: API key
             llm_model: Model name for generation
             colpali_model: COLPALI model identifier
-            enable_input_guardrails: Enable input validation
             enable_output_guardrails: Enable output validation
             max_retrieval_results: Maximum number of documents to retrieve
             device: Device for COLPALI inference
@@ -81,7 +78,6 @@ class GuardRAGAgent:
         self.llm_endpoint = llm_endpoint
         self.llm_api_key = llm_api_key
         self.llm_model = llm_model
-        self.enable_input_guardrails = enable_input_guardrails
         self.enable_output_guardrails = enable_output_guardrails
         self.max_retrieval_results = max_retrieval_results
 
@@ -102,15 +98,6 @@ class GuardRAGAgent:
         )
 
         # Initialize guardrails with pattern-based validation (no external downloads)
-        if self.enable_input_guardrails:
-            self.input_guardrail = InputGuardrail(
-                llm_endpoint=llm_endpoint,
-                llm_api_key=llm_api_key,
-                llm_model=llm_model,
-                enable_keyword_filter=True,
-                enable_llm_validation=True,
-            )
-
         if self.enable_output_guardrails:
             self.output_guardrail = OutputGuardrail(
                 llm_endpoint=llm_endpoint,
@@ -188,30 +175,7 @@ Gib niemals Informationen aus, die nicht in den bereitgestellten Quellen stehen.
         warnings = []
 
         try:
-            # Step 1: Input validation
-            if self.enable_input_guardrails:
-                logger.info("Running input guardrails...")
-                input_result = await self.input_guardrail.validate_query(query)
-                guardrail_checks["input_validation"] = {
-                    "result": input_result.result.value,
-                    "reason": input_result.reason,
-                    "confidence": input_result.confidence,
-                }
-
-                if input_result.result == ValidationResult.REJECTED:
-                    return RAGResponse(
-                        answer=f"Anfrage abgelehnt: {input_result.reason}",
-                        sources=[],
-                        confidence=0.0,
-                        processing_time=time.time() - start_time,
-                        guardrail_checks=guardrail_checks,
-                        warnings=input_result.suggestions or [],
-                    )
-
-                if input_result.result == ValidationResult.WARNING:
-                    warnings.extend(input_result.suggestions or [])
-
-            # Step 2: Document retrieval
+            # Step 1: Document retrieval (no input validation for authenticated users)
             logger.info(f"Retrieving documents for query: {query}")
             retrieval_results = self.colpali.search(
                 query=query, top_k=self.max_retrieval_results, return_explanations=True
@@ -227,11 +191,11 @@ Gib niemals Informationen aus, die nicht in den bereitgestellten Quellen stehen.
                     warnings=["Keine Dokumente im Index verfügbar"],
                 )
 
-            # Step 3: Response generation
+            # Step 2: Response generation
             logger.info("Generating response...")
             response = await self._generate_response(query, retrieval_results)
 
-            # Step 4: Output validation
+            # Step 3: Output validation
             if self.enable_output_guardrails:
                 logger.info("Running output guardrails...")
                 output_result = await self.output_guardrail.validate_response(
@@ -266,7 +230,7 @@ Gib niemals Informationen aus, die nicht in den bereitgestellten Quellen stehen.
                 if output_result.result == OutputValidationResult.WARNING:
                     warnings.append(f"Antwortqualität: {output_result.reason}")
 
-            # Step 5: Return final response
+            # Step 4: Return final response
             processing_time = time.time() - start_time
 
             return RAGResponse(
@@ -333,12 +297,13 @@ Zitiere die Seitenzahlen für deine Aussagen.
         """
         try:
             pages = self.colpali.process_document(pdf_path)
+            index_info = self.colpali.get_index_info()
 
             return {
                 "success": True,
                 "pages_processed": len(pages),
                 "document_path": str(pdf_path),
-                "total_pages_in_index": len(self.colpali.document_pages),
+                "total_pages_in_index": index_info.get("num_pages", 0),
             }
 
         except Exception as e:
@@ -354,14 +319,11 @@ Zitiere die Seitenzahlen für deine Aussagen.
         """Get comprehensive system status."""
         status = {
             "colpali_status": self.colpali.get_index_info(),
-            "input_guardrails_enabled": self.enable_input_guardrails,
+            "input_guardrails_enabled": False,  # Disabled for authenticated users
             "output_guardrails_enabled": self.enable_output_guardrails,
             "max_retrieval_results": self.max_retrieval_results,
             "llm_model": self.llm_model,
         }
-
-        if self.enable_input_guardrails:
-            status["input_guardrail_stats"] = self.input_guardrail.get_stats()
 
         if self.enable_output_guardrails:
             status["output_guardrail_stats"] = self.output_guardrail.get_stats()
@@ -374,27 +336,13 @@ Zitiere die Seitenzahlen für deine Aussagen.
 
         try:
             # Check COLPALI
+            index_info = self.colpali.get_index_info()
             health["components"]["colpali"] = {
                 "status": "healthy",
-                "pages_indexed": len(self.colpali.document_pages),
+                "pages_indexed": index_info.get("num_pages", 0),
             }
         except Exception as e:
             health["components"]["colpali"] = {"status": "error", "error": str(e)}
-            health["status"] = "degraded"
-
-        try:
-            # Check input guardrails
-            if self.enable_input_guardrails:
-                test_result = await self.input_guardrail.validate_query("test query")
-                health["components"]["input_guardrails"] = {
-                    "status": "healthy",
-                    "test_validation": test_result.result.value,
-                }
-        except Exception as e:
-            health["components"]["input_guardrails"] = {
-                "status": "error",
-                "error": str(e),
-            }
             health["status"] = "degraded"
 
         try:

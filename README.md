@@ -1,4 +1,4 @@
-# GuardRAG - Secure Document RAG System
+# 🛡️ GuardRAG - Secure Document RAG System
 
 Ein fortschrittliches RAG-System (Retrieval-Augmented Generation) auf Basis von COLPALI mit integrierten Guardrails für sichere und vertrauenswürdige Dokumentenverarbeitung.
 
@@ -6,39 +6,54 @@ Ein fortschrittliches RAG-System (Retrieval-Augmented Generation) auf Basis von 
 
 GuardRAG kombiniert modernste Vision-Language-Modelle (COLPALI) mit umfassenden Sicherheitsmechanismen (Guardrails), um eine robuste und vertrauenswürdige Lösung für die Analyse wissenschaftlicher Dokumente zu bieten.
 
-### Kernfunktionen
+### ✨ Kernfunktionen
 
-- **COLPALI-Integration**: Effiziente visuelle Dokumentenretrieval mit dem `vidore/colqwen2.5-v0.2` Modell
-- **Input Guardrails**: Validierung und Filterung eingehender Anfragen
-- **Output Guardrails**: Überprüfung generierter Antworten auf Faktentreue und Sicherheit
-- **File Upload**: Unterstützung für PDF, DOCX, TXT, MD, HTML-Dateien
-- **FastAPI-Interface**: RESTful API mit automatischer Dokumentation
-- **MCP-Server**: Integration als Model Context Protocol Server
+- **🔍 COLPALI-Integration**: Effiziente visuelle Dokumentenretrieval mit dem `vidore/colqwen2.5-v0.2` Modell
+- **🛡️ Input Guardrails**: Validierung und Filterung eingehender Anfragen
+- **✅ Output Guardrails**: Überprüfung generierter Antworten auf Faktentreue und Sicherheit
+- **📁 File Upload**: Unterstützung für PDF, DOCX, TXT, MD, HTML-Dateien
+- **🚀 FastAPI-Interface**: RESTful API mit automatischer Dokumentation
+- **🔌 MCP-Server**: Integration als Model Context Protocol Server
+- **🧠 Hybrid LLM+Regex**: Intelligente Content-Validierung mit automatischem Lernen
+- **🔒 PII-Schutz**: Erkennung und Sanitisierung persönlicher Daten
+- **🧪 CLI-Tester**: Interaktiver Kommandozeilen-Tester für alle Funktionen
 
-## 🏗️ Architektur
+## 🏗️ Systemarchitektur
 
 ```
 Benutzeranfrage
     ↓
-[ Input Guardrail ] ─── Prüfung auf Angemessenheit, Relevanz, Sicherheit
+[ Input Guardrail ] ─── 🔍 Hybrid LLM+Regex Prüfung:
+    │                   • Profanität & Toxizität
+    │                   • PII-Erkennung (E-Mail, Tel, IBAN)
+    │                   • Gefährliche Inhalte (Drogen, Waffen, Sprengstoff)
+    │                   • Konkurrenten-Erwähnungen
+    │                   • Automatisches Lernen neuer Bedrohungen
     ↓ (ZUGELASSEN)
-[ COLPALI Retrieval ] ── Visuelle Dokumentensuche
+[ COLPALI Retrieval ] ── 📊 Visuelle Dokumentensuche:
+    │                   • Layout-bewusste Analyse
+    │                   • OCR-freie Texterkennung
+    │                   • Multimodale Embeddings
     ↓
-[ LLM Generation ] ────── Antwortgenerierung basierend auf Quellen
+[ LLM Generation ] ────── 🤖 Antwortgenerierung basierend auf Quellen
     ↓
-[ Output Guardrail ] ─── Faktentreue, Vollständigkeit, Sicherheitsprüfung
+[ Output Guardrail ] ─── ✅ Qualitätsprüfung:
+    │                   • Faktentreue-Abgleich
+    │                   • Halluzinations-Detektion
+    │                   • Sicherheitsprüfung
     ↓ (GÜLTIG)
-Antwort an Nutzer
+Sichere Antwort an Nutzer
 ```
 
-## 🚀 Installation
+## 🚀 Installation & Quick Start
 
 ### Voraussetzungen
 
 - Python 3.10+
-- [uv](https://docs.astral.sh/uv/) Paketmanager
+- [uv](https://docs.astral.sh/uv/) Paketmanager (empfohlen)
 - [Ollama](https://ollama.com/) für lokale LLM-Inferenz
 - GPU mit CUDA-Unterstützung (empfohlen)
+- Docker (optional, für Services)
 
 ### 1. Repository klonen
 
@@ -47,46 +62,80 @@ git clone <repository-url>
 cd GuardRAG
 ```
 
-### 2. Virtuelle Umgebung erstellen
+### 2. Abhängigkeiten installieren
 
-```bash
+```powershell
 # Mit uv (empfohlen)
-uv venv
-.venv\Scripts\activate  # Windows
+uv sync
 
-# Dependencies installieren
-uv pip install -e .
+# Oder mit pip
+.venv\Scripts\activate
+pip install -e .
 ```
 
-### 3. Ollama-Modelle installieren
+### 3. Umgebung konfigurieren
+
+Kopiere `.env.example` zu `.env` und passe die Werte an:
 
 ```bash
-# Basis-LLM für Guardrails und Generation
+# LLM Configuration (Ollama)
+LLM_ENDPOINT=http://localhost:11434/v1
+LLM_API_KEY=ollama
+LLM_MODEL=qwen2.5:latest
+
+# COLPALI Configuration
+COLPALI_MODEL=vidore/colqwen2.5-v0.2
+
+# Qdrant Configuration
+QDRANT_HOST=localhost
+QDRANT_PORT=6333
+
+# Guardrails Configuration
+ENABLE_INPUT_GUARDRAILS=true
+ENABLE_OUTPUT_GUARDRAILS=true
+TOXICITY_THRESHOLD=0.3
+CONFIDENCE_THRESHOLD=0.7
+```
+
+### 4. Services starten
+
+#### Option A: Docker Compose (empfohlen)
+
+```powershell
+# Alle Services starten (Ollama + Qdrant + GuardRAG)
+docker-compose up -d
+
+# Ollama Modelle pullen
+docker exec guardrag-ollama-1 ollama pull qwen2.5:latest
+docker exec guardrag-ollama-1 ollama pull granite3.2-vision:2b
+```
+
+#### Option B: Lokale Services
+
+```powershell
+# 1. Qdrant starten
+docker run -p 6333:6333 -p 6334:6334 -v qdrant_storage:/qdrant/storage:z qdrant/qdrant:latest
+
+# 2. Ollama starten (falls nicht installiert)
+# Download von https://ollama.ai und installieren
+ollama serve
 ollama pull qwen2.5:latest
 
-# Alternative Modelle (optional)
-ollama pull granite3.3:8b
-ollama pull qwen2.5-coder:latest
-ollama pull llava:latest
-```
-
-### 4. Umgebungsvariablen konfigurieren
-
-```bash
-# .env Datei erstellen
-copy .env.example .env
-
-# .env bearbeiten und Konfiguration anpassen
-```
-
-### 5. Server starten
-
-```bash
+# 3. GuardRAG starten
+.venv\Scripts\activate
 python main.py
 ```
 
-Die API ist verfügbar unter: `http://localhost:8000`
-Dokumentation: `http://localhost:8000/docs`
+### 5. Verfügbarkeitsprüfung
+
+```bash
+# Health Check
+curl http://localhost:8000/health
+
+# API-Dokumentation
+# Swagger UI: http://localhost:8000/docs
+# ReDoc: http://localhost:8000/redoc
+```
 
 ## 📖 API-Nutzung
 
@@ -155,57 +204,185 @@ curl -X POST "http://localhost:8000/rag-query" \
 curl -X GET "http://localhost:8000/system-status"
 ```
 
-## 🛡️ Guardrails
+## 🛡️ Guardrails - Intelligente Sicherheitssysteme
 
-### Input Guardrails
+### 🔍 Input Guardrails
 
-**Zweck**: Filterung problematischer oder irrelevanter Anfragen
+**Zweck**: Hybrid LLM+Regex Filterung problematischer oder irrelevanter Anfragen
+
+**Prüfkategorien**:
+
+#### 1. 💬 Profanität & Toxizität
+- **Deutsche & englische Schimpfwörter**: fuck, scheiße, arschloch, etc.
+- **Diskriminierende Begriffe**: rassistische, sexistische, homophobe Sprache
+- **Hasssprache**: Nazi-Begriffe, Fremdenfeindlichkeit
+- **Toxische Kommunikationsmuster**: Bedrohungen, Beleidigungen
+
+#### 2. 🔒 PII-Erkennung (Persönliche Daten)
+- **E-Mail-Adressen**: max.mustermann@beispiel.de
+- **Telefonnummern**: +49 123 456789, deutsche und internationale Formate
+- **Deutsche Adressen**: Musterstraße 123, 12345 Berlin
+- **Bankdaten**: IBAN, Kreditkartennummern
+- **Personennamen**: spaCy-basierte Named Entity Recognition
+- **Ausweisnummern**: Deutsche Steuer-ID, Personalausweis
+
+#### 3. ⚠️ Gefährliche Inhalte (mit automatischem Lernen)
+- **Sprengstoff-Chemikalien**: Toluol, Schwefel, Salpetersäure, TNT, C4
+- **Drogen**: CBD, THC, Cannabis, Methamphetamine, Kokain, LSD
+- **Waffen**: Pistole, Gewehr, AK47, Munition
+- **Illegale Aktivitäten**: Hacking, Phishing, Geldwäsche
+
+**🧠 Hybrid-Ansatz**:
+1. **Regex-Trigger** erkennen verdächtige Begriffe (schnell)
+2. **LLM analysiert Kontext** (intelligent): 
+   - "Puderzucker für Guggelhupf" → ✅ harmlos (Backen)
+   - "Puderzucker + Salz explodieren" → ❌ gefährlich (Sprengstoff)
+3. **Automatisches Lernen**: LLM-erkannte Gefahren ohne Regex → Lern-Log
+
+#### 4. 🏢 Konkurrenten-Erkennung
+- **Blockierte Anbieter**: OpenAI, ChatGPT, Claude, Gemini, Anthropic
+- **Benutzerdefinierte Listen**: Erweiterbar
+- **Automatische Blockierung**: Bei Erwähnung von Konkurrenzprodukten
+
+#### 5. 🧹 Text-Sanitisierung
+- **PII-Ersetzung**: E-Mails → [EMAIL], Telefon → [PHONE]
+- **Overlap-Resolution**: Überlappende Erkennungen bereinigen
+- **Struktur-Erhaltung**: Textformat bleibt erhalten
+
+### ✅ Output Guardrails
+
+**Zweck**: Qualitätssicherung und Sicherheitsprüfung der generierten Antworten
 
 **Prüfungen**:
-- Grundlegende Validierung (Länge, Format)
-- Keyword-Filterung (verbotene Begriffe)
-- LLM-basierte Bewertung (Angemessenheit, Relevanz, Sicherheit)
+- **Faktentreue**: Abgleich mit Quellendokumenten
+- **Vollständigkeit**: Angemessene Beantwortung der Frage
+- **Halluzinations-Detektion**: Erkennung erfundener Informationen
+- **Toxizitätsprüfung**: Sicherstellung sauberer Ausgaben
+- **Relevanz-Check**: Passende Antwort zur Frage
 
-**Beispiele abgelehnter Anfragen**:
-- Hassrede oder diskriminierende Inhalte
-- Anweisungen für illegale Aktivitäten
-- Themenirrelevante Fragen
+### 📊 Beispiele
 
-### Output Guardrails
+#### ✅ Zugelassene Anfragen
+```
+"Wie funktioniert maschinelles Lernen?"
+"CBD Kekse backen - welche Dosierung?"
+"Welche Methodik wurde in der Studie verwendet?"
+```
 
-**Zweck**: Qualitätssicherung und Sicherheitsprüfung der Antworten
+#### ❌ Blockierte Anfragen
+```
+"Du bist so dumm!" (Toxizität)
+"Wie stelle ich Sprengstoff her?" (Gefährlicher Inhalt)
+"Meine E-Mail ist max@test.de" (PII)
+"ChatGPT ist besser" (Konkurrent)
+```
 
-**Prüfungen**:
-- Faktentreue (Abgleich mit Quellen)
-- Vollständigkeit (angemessene Beantwortung)
-- Toxizitätserkennung
-- Halluzinationsdetektion
+#### 🧹 Sanitisierte Ausgaben
+```
+Input:  "Kontaktiere mich unter max@test.de"
+Output: "Kontaktiere mich unter [EMAIL]"
+```
 
-## 🔧 Konfiguration
+## 🔧 Konfiguration & Verfügbare Modelle
 
 ### Umgebungsvariablen
 
 | Variable | Beschreibung | Default |
 |----------|--------------|---------|
 | `LLM_ENDPOINT` | Ollama API Endpoint | `http://localhost:11434/v1` |
+| `LLM_API_KEY` | API Key für LLM | `ollama` |
 | `LLM_MODEL` | Modell für Generation | `qwen2.5:latest` |
 | `COLPALI_MODEL` | COLPALI Modell | `vidore/colqwen2.5-v0.2` |
+| `QDRANT_HOST` | Qdrant Server Host | `localhost` |
+| `QDRANT_PORT` | Qdrant Server Port | `6333` |
 | `ENABLE_INPUT_GUARDRAILS` | Input-Validierung aktivieren | `true` |
 | `ENABLE_OUTPUT_GUARDRAILS` | Output-Validierung aktivieren | `true` |
 | `TOXICITY_THRESHOLD` | Schwellwert für Toxizität | `0.3` |
 | `CONFIDENCE_THRESHOLD` | Mindestvertrauen | `0.7` |
 
-### Verfügbare Ollama-Modelle
+### 🤖 Unterstützte LLM-Modelle
 
-- `granite3.2-vision:2b` - Kompaktes Vision-Modell
-- `granite-code:8b` - Code-spezialisiert  
-- `qwen2.5-coder:latest` - Coding und Analyse
-- `qwen3:latest` - Allzweck-Modell
-- `granite3.3:8b` - Ausgewogenes Modell
-- `llava:latest` - Vision-Language-Modell
-- `qwen2.5:latest` - Empfohlenes Standardmodell
-- `google/gemma3:latest` - Google Gemma
-- `bge-m3:latest` - Embedding-Modell
+Das System unterstützt **alle OpenAI-kompatiblen API-Endpunkte**:
+
+#### 🏠 Lokale Modelle (Ollama) z. B.
+- **`qwen2.5:latest`** ⭐ - Empfohlenes Standardmodell (Allzweck)
+- **`qwen3:latest`** - Neueste Qwen-Version
+- **`granite3.3:8b`** - Ausgewogenes Allzweck-Modell
+- **`google/gemma3:latest`** - Google's Gemma-Modell
+- **Alle weiteren Ollama-Modelle** - Vollständige Kompatibilität
+
+#### ☁️ Cloud-APIs (OpenAI-kompatibel)
+- **OpenAI**: GPT-4, GPT-3.5-turbo, GPT-4-turbo
+- **Anthropic**: Claude-3.5-Sonnet, Claude-3-Haiku (via kompatible APIs)
+- **Groq**: Llama-3, Mixtral, Gemma (schnelle Inferenz)
+- **Together AI**: Llama-2/3, Code Llama, Mistral
+- **Perplexity**: Llama-3, Mixtral-8x7B
+- **OpenRouter**: Zugang zu 100+ Modellen
+- **Azure OpenAI**: Enterprise-GPT-Modelle
+- **AWS Bedrock**: Claude, Llama über OpenAI-Proxy
+
+#### 🔧 Konfiguration für verschiedene Anbieter
+
+```bash
+# Lokale Ollama-Installation
+LLM_ENDPOINT=http://localhost:11434/v1
+LLM_API_KEY=ollama
+LLM_MODEL=qwen2.5:latest
+
+# OpenAI
+LLM_ENDPOINT=https://api.openai.com/v1
+LLM_API_KEY=sk-your-openai-key
+LLM_MODEL=gpt-4
+
+# Groq (schnelle Inferenz)
+LLM_ENDPOINT=https://api.groq.com/openai/v1
+LLM_API_KEY=gsk_your-groq-key
+LLM_MODEL=llama-3.1-70b-versatile
+
+# Together AI
+LLM_ENDPOINT=https://api.together.xyz/v1
+LLM_API_KEY=your-together-key
+LLM_MODEL=meta-llama/Llama-3-70b-chat-hf
+
+# OpenRouter (Multi-Provider)
+LLM_ENDPOINT=https://openrouter.ai/api/v1
+LLM_API_KEY=sk-or-your-openrouter-key
+LLM_MODEL=anthropic/claude-3.5-sonnet
+
+# Lokale vLLM-Installation
+LLM_ENDPOINT=http://localhost:8000/v1
+LLM_API_KEY=token-abc123
+LLM_MODEL=microsoft/DialoGPT-medium
+```
+
+Das System funktioniert mit **jedem OpenAI-kompatiblen Endpunkt** - einfach Endpoint, API-Key und Modellname konfigurieren!
+
+### 📂 Projektstruktur
+
+```
+GuardRAG/
+├── src/                           # 🎯 Kernkomponenten
+│   ├── modern_guardrails.py       # 🛡️ Hybrid LLM+Regex Guardrails
+│   ├── colpali_integration.py     # 🔍 COLPALI + Qdrant Integration
+│   ├── qdrant_integration.py      # 📊 Vektor-Datenbank
+│   ├── input_guardrail.py         # 🚫 Eingabevalidierung
+│   ├── output_guardrail.py        # ✅ Ausgabevalidierung
+│   └── rag_agent.py               # 🤖 Haupt-RAG-Agent
+├── mcp_fileconverter/             # 📁 PDF-Konvertierung
+│   └── file2pdf.py               # 🔄 Datei-zu-PDF-Konverter
+├── tests/                         # 🧪 Test-Suite
+│   ├── test_comprehensive.py      # 📋 Umfassende Tests
+│   ├── test_api.py                # 🌐 API-Tests
+│   └── test_guardrails.py         # 🛡️ Guardrails-Tests
+├── main.py                        # 🚀 FastAPI-Anwendung
+├── test_hybrid_guardrails.py     # �️ Guardrails-Tests
+├── test_complete_system.py       # 🧪 System-Tests
+├── tasks.py                      # ⚙️ Development Tasks
+├── docker-compose.yml            # 🐳 Multi-Service Setup
+├── pyproject.toml                # ⚙️ Projekt-Konfiguration
+├── .env.example                  # 📝 Umgebungsvorlage
+└── uploads/                      # 📁 Upload-Verzeichnis
+```
 
 ## 🔍 COLPALI-Integration
 
@@ -225,18 +402,96 @@ GuardRAG nutzt COLPALI (Collaborative Learning for Vision-Language Models) für 
 - **Multimodal**: Text und visuelle Elemente gemeinsam
 - **Effizienz**: Schnelle Suche in großen Dokumentensammlungen
 
-## 🧪 Testing
+## 🧪 Testing & CLI-Tester
+
+### 🖥️ Test-Skripte
+
+GuardRAG enthält verschiedene Test-Skripte für die Funktionsvalidierung:
 
 ```bash
-# Tests ausführen
-uv run pytest
+# Hybrid Guardrails System testen
+python test_hybrid_guardrails.py
 
-# Mit Coverage
-uv run pytest --cov=src
+# Komplettes System testen
+python test_complete_system.py
 
-# Spezifische Tests
-uv run pytest tests/test_guardrails.py
+# Development Tasks ausführen
+python tasks.py help
 ```
+
+**🎯 Test-Funktionen**:
+- **�️ Guardrails-Tests**: Hybrid LLM+Regex Validation
+- **🔍 System-Tests**: Vollständige Integration
+- **🧪 Unit-Tests**: Einzelkomponenten-Validierung
+- **📊 Development Tasks**: Code-Qualität und Automatisierung
+
+**🎛️ Available Test Commands**:
+```bash
+# Hybrid Guardrails testen
+python test_hybrid_guardrails.py
+
+# Komplettes System validieren  
+python test_complete_system.py
+
+# Development Tasks
+python tasks.py dev-setup      # Entwicklungsumgebung einrichten
+python tasks.py test-unit      # Unit Tests ausführen
+python tasks.py test-coverage  # Coverage Reports
+python tasks.py format         # Code formatieren
+python tasks.py lint          # Code-Qualität prüfen
+python tasks.py help          # Alle verfügbaren Tasks
+```
+
+**📋 Test-Ausgabe-Format**:
+```
+�️ GUARDRAILS TEST RESULTS
+==================================================
+✅ Input Validation: PASSED/FAILED
+🧹 Sanitization: '[EMAIL] entfernt' 
+� Detection Categories:
+   • Profanität: 0 found
+   • PII: 1 detected
+   • Dangerous Content: 0 found
+   • Toxicity: 0 found
+🎯 Confidence: 0.95
+⏱️ Processing Time: 0.12s
+```
+
+### 🧪 Automated Test Suite
+
+```powershell
+# Test-Skripte ausführen
+python test_hybrid_guardrails.py    # Guardrails-System testen
+python test_complete_system.py      # Komplette Integration
+
+# Development Tasks
+python tasks.py test-unit            # Unit Tests
+python tasks.py test-coverage        # Tests mit Coverage
+python tasks.py dev-setup           # Entwicklungsumgebung
+
+# Mit pytest direkt (falls verfügbar)
+.venv\Scripts\activate
+python -m pytest tests/ -v                    # Alle Tests
+python -m pytest tests/test_comprehensive.py -v  # Comprehensive Tests
+python -m pytest tests/test_api.py -v         # API Tests
+python -m pytest tests/test_guardrails.py -v  # Guardrails Tests
+
+# Coverage Report generieren
+python -m pytest --cov=src --cov-report=html --cov-report=term
+```
+
+**📁 Verfügbare Test-Dateien**:
+- **`test_hybrid_guardrails.py`** - Hybrid LLM+Regex Guardrails-Tests
+- **`test_complete_system.py`** - Komplette System-Integration-Tests
+- **`tasks.py`** - Entwicklungsaufgaben-Manager und Test-Runner
+- **`tests/`** (falls vorhanden) - Pytest-basierte Test-Suite
+
+### 📊 Coverage-Reports
+
+Nach dem Ausführen der Tests mit Coverage:
+- **HTML-Report**: `htmlcov/index.html`
+- **Terminal-Report**: Direkte Ausgabe
+- **XML-Report**: `coverage.xml` (für CI/CD)
 
 ## 📊 Monitoring
 
@@ -257,59 +512,113 @@ Logs werden in strukturiertem Format ausgegeben:
 2025-01-10 15:31:07 - guardrag.output_guardrail - INFO - Output validation approved
 ```
 
-## 🛠️ Entwicklung
+## 🛠️ Entwicklung & Code-Qualität
 
-### Projektstruktur
+### Development Tasks
 
+```powershell
+# Entwicklungsumgebung einrichten
+python tasks.py dev-setup
+
+# Code formatieren
+python tasks.py format
+.venv\Scripts\python.exe -m black src/ tests/
+.venv\Scripts\python.exe -m isort src/ tests/
+
+# Code prüfen  
+python tasks.py lint
+.venv\Scripts\python.exe -m flake8 src/
+.venv\Scripts\python.exe -m mypy src/
+
+# Dependencies installieren
+python tasks.py install-dev
+
+# Server starten
+python tasks.py start
+
+# Alle verfügbaren Tasks anzeigen
+python tasks.py help
 ```
-GuardRAG/
-├── src/                          # Kernkomponenten
-│   ├── colpali_integration.py    # COLPALI-Wrapper
-│   ├── input_guardrail.py        # Eingabevalidierung
-│   ├── output_guardrail.py       # Ausgabevalidierung
-│   └── rag_agent.py              # Haupt-RAG-Agent
-├── mcp_services/                 # Bestehende MCP-Services
-├── main.py                       # FastAPI-Anwendung
-├── pyproject.toml               # Projektkonfiguration
-├── .env.example                 # Umgebungsvorlage
-└── uploads/                     # Upload-Verzeichnis
+
+### 🔧 Konfiguration für verschiedene Umgebungen
+
+#### Qdrant-Konfiguration
+```python
+# Lokale Qdrant-Instanz
+QDRANT_HOST=localhost
+QDRANT_PORT=6333
+
+# Qdrant Cloud
+QDRANT_URL=https://your-cluster.qdrant.tech
+QDRANT_API_KEY=your-api-key
 ```
 
-### Code-Stil
+#### COLPALI-Konfiguration
+Das System nutzt standardmäßig das `vidore/colqwen2.5-v0.2` Modell für visuelle Dokumentenanalyse. Bei Memory-Problemen kann ein kleineres Modell verwendet werden:
 
 ```bash
-# Formatierung
-uv run black src/
-uv run isort src/
-
-# Linting
-uv run flake8 src/
-uv run mypy src/
+# Kleineres COLPALI-Modell bei Memory-Problemen
+export COLPALI_MODEL=vidore/colSmol-256M
 ```
 
-## 🚨 Troubleshooting
+## 🚨 Troubleshooting & FAQ
 
 ### Häufige Probleme
 
-1. **CUDA Out of Memory**
-   ```bash
-   # Kleineres COLPALI-Modell verwenden
-   export COLPALI_MODEL=vidore/colSmol-256M
-   ```
+#### 1. **CUDA Out of Memory**
+```bash
+# Kleineres COLPALI-Modell verwenden
+export COLPALI_MODEL=vidore/colSmol-256M
 
-2. **Ollama Connection Error**
-   ```bash
-   # Ollama-Service prüfen
-   ollama list
-   ollama serve
-   ```
+# Docker Memory Limits erhöhen
+docker-compose up --scale guardrag=1 --memory=8g
+```
 
-3. **PDF Conversion Fehler**
-   ```bash
-   # LibreOffice installieren (für Office-Dateien)
-   # WeasyPrint installieren (für HTML)
-   uv pip install weasyprint
-   ```
+#### 2. **Ollama Connection Error**
+```bash
+# Ollama-Service prüfen
+ollama list
+ollama serve
+
+# API-Verfügbarkeit testen
+curl http://localhost:11434/api/tags
+```
+
+#### 3. **Qdrant Connection Failed**
+```bash
+# Prüfe ob Qdrant läuft
+curl http://localhost:6333/collections
+
+# Qdrant in Docker starten
+docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant:latest
+```
+
+#### 4. **PDF Conversion Fehler**
+```bash
+# LibreOffice installieren (für Office-Dateien)
+# WeasyPrint installieren (für HTML)
+uv pip install weasyprint
+```
+
+#### 5. **COLPALI Model Download**
+```bash
+# Manuell Model herunterladen
+python -c "from colpali_engine.models import ColQwen2; ColQwen2.from_pretrained('vidore/colqwen2.5-v0.2')"
+```
+
+#### 6. **Test-Skripte starten nicht**
+```bash
+# Prüfe verfügbare Test-Dateien
+python test_hybrid_guardrails.py
+python test_complete_system.py
+
+# Prüfe moderne_guardrails Module-Import
+python -c "from src.modern_guardrails import create_guardrails_validator"
+
+# spaCy deutsche Modelle installieren
+python -m spacy download de_core_news_lg
+python -m spacy download de_core_news_sm
+```
 
 ### Debug-Modus
 
@@ -317,30 +626,63 @@ uv run mypy src/
 # Verbose Logging aktivieren
 export UVICORN_LOG_LEVEL=debug
 python main.py
+
+# Guardrails Learning-Logs überwachen
+tail -f guardrails_learning.jsonl
 ```
 
-## 🤝 Beitragen
+### Performance-Optimierung
 
-1. Fork des Repositories
-2. Feature Branch erstellen (`git checkout -b feature/neue-funktion`)
-3. Änderungen committen (`git commit -am 'Neue Funktion hinzufügen'`)
-4. Branch pushen (`git push origin feature/neue-funktion`)
-5. Pull Request erstellen
+```bash
+# GPU-Nutzung prüfen
+nvidia-smi
+
+# Memory-Usage überwachen
+htop
+
+# Qdrant Performance tuning
+curl -X PUT "http://localhost:6333/collections/documents/index" \
+  -H "Content-Type: application/json" \
+  -d '{"field_name": "vector", "field_schema": "Float"}'
+```
 
 ## 📄 Lizenz
 
-Dieses Projekt steht unter der MIT-Lizenz. Siehe [LICENSE](LICENSE) für Details.
+Dieses Projekt steht unter der **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+### Was bedeutet das?
+
+- ✅ **Freie Nutzung**: Kostenlose Nutzung für alle Zwecke
+- ✅ **Quellcode-Zugang**: Vollständiger Quellcode verfügbar
+- ✅ **Modifikationen erlaubt**: Anpassungen und Erweiterungen möglich
+- ✅ **Weitergabe erlaubt**: Redistribution unter gleicher Lizenz
+
+### Copyleft-Bedingungen
+
+- 📤 **Quellcode-Pflicht**: Bei Weitergabe muss Quellcode mitgeliefert werden
+- 🌐 **Network-Copyleft**: Auch bei Online-Services muss Quellcode verfügbar sein
+- � **Gleiche Lizenz**: Abgeleitete Werke müssen unter AGPL-3.0 stehen
+
+Siehe [LICENSE.md](LICENSE.md) für vollständige Details.
 
 ## 🙏 Danksagungen
 
-- [COLPALI](https://github.com/illuin-tech/colpali) für das exzellente Vision-Language-Retrieval-Framework
-- [PydanticAI](https://ai.pydantic.dev/) für die strukturierte LLM-Integration
-- [FastAPI](https://fastapi.tiangolo.com/) für das moderne Web-Framework
-- [Ollama](https://ollama.com/) für lokale LLM-Inferenz
+- **[COLPALI](https://github.com/illuin-tech/colpali)** für das exzellente Vision-Language-Retrieval-Framework
+- **[PydanticAI](https://ai.pydantic.dev/)** für die strukturierte LLM-Integration
+- **[FastAPI](https://fastapi.tiangolo.com/)** für das moderne Web-Framework
+- **[Ollama](https://ollama.com/)** für lokale LLM-Inferenz
+- **[Qdrant](https://qdrant.tech/)** für die hochperformante Vektordatenbank
+- **[spaCy](https://spacy.io/)** für Named Entity Recognition
+- **[OpenAI](https://openai.com/)** für die API-Kompatibilität
 
-## 📞 Support
 
-Bei Fragen oder Problemen:
-- Issues im Repository erstellen
-- Dokumentation unter `/docs` konsultieren
-- Logs für Fehlerdiagnose nutzen
+### 🔍 Weitere Ressourcen
+
+- **API-Dokumentation**: http://localhost:8000/docs (Swagger UI)
+- **Alternative Docs**: http://localhost:8000/redoc (ReDoc)
+- **Health Check**: http://localhost:8000/health
+- **System Status**: http://localhost:8000/system-status
+
+---
+
+🛡️ **GuardRAG** - Sichere, intelligente und lernfähige Dokumentenanalyse mit modernsten AI-Guardrails!

@@ -4,7 +4,7 @@ import uvicorn
 import logging
 import shutil
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -18,6 +18,7 @@ from mcp_fileconverter.file2pdf import PDFConverter
 
 # --- Import GuardRAG Components ---
 from src.rag_agent import GuardRAGAgent
+from src.enhanced_rag_agent import EnhancedGuardRAGAgent
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -37,6 +38,7 @@ else:
 # --- Global Variables ---
 pdf_converter: Optional[PDFConverter] = None
 guardrag_agent: Optional[GuardRAGAgent] = None
+enhanced_guardrag_agent: Optional[EnhancedGuardRAGAgent] = None
 
 # Upload directory
 UPLOAD_DIR = Path("uploads")
@@ -59,7 +61,7 @@ async def lifespan(app: FastAPI):
 
 async def initialize_services():
     """Initialize all services during startup."""
-    global pdf_converter, guardrag_agent
+    global pdf_converter, guardrag_agent, enhanced_guardrag_agent
 
     # Get LLM configuration
     llm_endpoint = os.getenv("LLM_ENDPOINT", "http://localhost:11434/v1")
@@ -87,6 +89,25 @@ async def initialize_services():
             colpali_model=colpali_model,
             enable_input_guardrails=True,
             enable_output_guardrails=True,
+            max_retrieval_results=5,
+            qdrant_host=qdrant_host,
+            qdrant_port=qdrant_port,
+            qdrant_url=qdrant_url,
+            qdrant_api_key=qdrant_api_key,
+        )
+
+        # Initialize Enhanced GuardRAG Agent
+        logger.info("Initializing Enhanced GuardRAG agent...")
+        enhanced_guardrag_agent = EnhancedGuardRAGAgent(
+            llm_endpoint=llm_endpoint,
+            llm_api_key=llm_api_key,
+            llm_model=llm_model,
+            colpali_model=colpali_model,
+            enable_input_guardrails=True,
+            enable_output_guardrails=True,
+            enable_pii_sanitization=True,
+            enable_competitor_detection=True,
+            custom_competitors=None,  # Can be configured via environment
             max_retrieval_results=5,
             qdrant_host=qdrant_host,
             qdrant_port=qdrant_port,
@@ -127,6 +148,43 @@ class RAGQueryResponse(BaseModel):
     sources: List[dict]
     warnings: List[str]
     guardrail_checks: dict
+
+
+# Enhanced RAG Query Models
+class EnhancedRAGQueryRequest(BaseModel):
+    query: str = Field(..., description="The question to ask about the documents")
+    collection_name: str = Field(
+        default="documents", description="Name of the document collection"
+    )
+    enable_pii_sanitization: bool = Field(
+        default=True, description="Enable PII sanitization"
+    )
+    enable_competitor_detection: bool = Field(
+        default=True, description="Enable competitor detection"
+    )
+
+
+class EnhancedRAGQueryResponse(BaseModel):
+    answer: str = Field(..., description="Generated answer")
+    sanitized_answer: Optional[str] = Field(
+        None, description="PII-sanitized answer if different from original"
+    )
+    confidence: float = Field(..., description="Confidence score (0-1)")
+    processing_time: float = Field(..., description="Total processing time in seconds")
+    sources: List[Dict[str, Any]] = Field(..., description="Source documents used")
+    input_validation: Dict[str, Any] = Field(
+        ..., description="Input validation results"
+    )
+    output_validation: Optional[Dict[str, Any]] = Field(
+        None, description="Output validation results"
+    )
+    guardrail_checks: Dict[str, Any] = Field(
+        ..., description="All guardrail check results"
+    )
+    warnings: List[str] = Field(..., description="Warning messages")
+    statistics: Dict[str, Any] = Field(
+        ..., description="Performance and validation statistics"
+    )
 
 
 # System Status Models
@@ -342,6 +400,92 @@ async def rag_query(request: RAGQueryRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post(
+    "/enhanced-rag-query",
+    response_model=EnhancedRAGQueryResponse,
+    tags=["Enhanced RAG"],
+)
+async def enhanced_rag_query(request: EnhancedRAGQueryRequest):
+    """
+    Enhanced RAG query with modern guardrails and German PII support.
+
+    The enhanced system provides:
+    1. Advanced toxicity detection (German/English)
+    2. Comprehensive PII detection and sanitization
+    3. Competitor mention detection
+    4. Performance statistics and monitoring
+    5. Detailed validation reporting
+    """
+    global enhanced_guardrag_agent
+
+    if enhanced_guardrag_agent is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Enhanced GuardRAG service is not configured or failed to initialize.",
+        )
+
+    try:
+        # Process query through Enhanced GuardRAG pipeline
+        result = await enhanced_guardrag_agent.process_query(
+            query=request.query, collection_name=request.collection_name
+        )
+
+        # Format sources for API response
+        sources = []
+        for source in result.sources:
+            sources.append(
+                {
+                    "page_number": source.page.page_number
+                    if hasattr(source, "page")
+                    else None,
+                    "score": source.score,
+                    "source": source.source if hasattr(source, "source") else None,
+                    "text_preview": source.text[:200] + "..."
+                    if hasattr(source, "text") and source.text
+                    else None,
+                }
+            )
+
+        # Format input validation for response
+        input_validation_data = {}
+        if result.input_validation:
+            input_validation_data = {
+                "is_valid": result.input_validation.is_valid,
+                "blocked_reason": result.input_validation.blocked_reason,
+                "confidence": result.input_validation.confidence,
+                "processing_time_ms": result.input_validation.processing_time_ms,
+                "failed_validators": result.input_validation.failed_validators,
+                "suggestions": result.input_validation.suggestions,
+            }
+
+        # Format output validation for response
+        output_validation_data = None
+        if result.output_validation:
+            output_validation_data = {
+                "is_valid": result.output_validation.is_valid,
+                "reason": result.output_validation.reason,
+                "danger_level": getattr(result.output_validation, "danger_level", 0),
+                "confidence": getattr(result.output_validation, "confidence", 0.0),
+            }
+
+        return EnhancedRAGQueryResponse(
+            answer=result.answer,
+            sanitized_answer=result.sanitized_answer,
+            confidence=result.confidence,
+            processing_time=result.processing_time,
+            sources=sources,
+            input_validation=input_validation_data,
+            output_validation=output_validation_data,
+            guardrail_checks=result.guardrail_checks,
+            warnings=result.warnings,
+            statistics=result.statistics,
+        )
+
+    except Exception as e:
+        logger.error(f"Error processing enhanced RAG query: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/system-status", response_model=SystemStatusResponse, tags=["RAG"])
 async def system_status():
     """Get comprehensive system status."""
@@ -353,7 +497,7 @@ async def system_status():
         return SystemStatusResponse(
             status="operational",
             components=status,
-            documents_loaded=status["colpali_status"]["num_pages"],
+            documents_loaded=status["colpali_status"]["num_pages"] or 0,
             guardrails_enabled={
                 "input": status["input_guardrails_enabled"],
                 "output": status["output_guardrails_enabled"],
@@ -362,6 +506,41 @@ async def system_status():
 
     except Exception as e:
         logger.error(f"Error getting system status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/enhanced-system-status", response_model=Dict[str, Any], tags=["Enhanced RAG"]
+)
+async def enhanced_system_status():
+    """Get comprehensive enhanced system status with guardrails statistics."""
+    global enhanced_guardrag_agent
+
+    if enhanced_guardrag_agent is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Enhanced GuardRAG service is not configured.",
+        )
+
+    try:
+        health_check = await enhanced_guardrag_agent.health_check()
+        statistics = enhanced_guardrag_agent.get_statistics()
+
+        return {
+            "status": "healthy",
+            "version": "1.0.0-enhanced",
+            "health_check": health_check,
+            "statistics": statistics,
+            "features": {
+                "german_pii_detection": True,
+                "toxicity_detection": True,
+                "competitor_detection": True,
+                "text_sanitization": True,
+                "spacy_available": True,  # This should come from the actual system
+            },
+        }
+    except Exception as e:
+        logger.error(f"Error getting enhanced system status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -483,6 +662,47 @@ async def update_security_level(level: str):
 
     except Exception as e:
         logger.error(f"Error updating security level: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/reset-enhanced-statistics", tags=["Enhanced RAG"])
+async def reset_enhanced_statistics():
+    """Reset all enhanced guardrails statistics."""
+    global enhanced_guardrag_agent
+
+    if enhanced_guardrag_agent is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Enhanced GuardRAG service is not configured.",
+        )
+
+    try:
+        enhanced_guardrag_agent.reset_statistics()
+        return {"message": "Enhanced statistics reset successfully"}
+    except Exception as e:
+        logger.error(f"Error resetting enhanced statistics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/update-competitors", tags=["Enhanced RAG"])
+async def update_competitors(competitors: List[str]):
+    """Update the list of competitors to detect and block."""
+    global enhanced_guardrag_agent
+
+    if enhanced_guardrag_agent is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Enhanced GuardRAG service is not configured.",
+        )
+
+    try:
+        enhanced_guardrag_agent.update_competitors(competitors)
+        return {
+            "message": f"Competitor list updated with {len(competitors)} entries",
+            "competitors": competitors,
+        }
+    except Exception as e:
+        logger.error(f"Error updating competitors: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
