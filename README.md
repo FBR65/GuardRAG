@@ -13,10 +13,8 @@ GuardRAG kombiniert modernste Vision-Language-Modelle (COLPALI) mit umfassenden 
 - **✅ Output Guardrails**: Überprüfung generierter Antworten auf Faktentreue und Sicherheit
 - **📁 File Upload**: Unterstützung für PDF, DOCX, TXT, MD, HTML-Dateien
 - **🚀 FastAPI-Interface**: RESTful API mit automatischer Dokumentation
-- **🔌 MCP-Server**: Integration als Model Context Protocol Server
 - **🧠 Hybrid LLM+Regex**: Intelligente Content-Validierung mit automatischem Lernen
 - **🔒 PII-Schutz**: Erkennung und Sanitisierung persönlicher Daten
-- **🧪 CLI-Tester**: Interaktiver Kommandozeilen-Tester für alle Funktionen
 
 ## 🏗️ Systemarchitektur
 
@@ -370,10 +368,8 @@ GuardRAG/
 │   └── rag_agent.py               # 🤖 Haupt-RAG-Agent
 ├── mcp_fileconverter/             # 📁 PDF-Konvertierung
 │   └── file2pdf.py               # 🔄 Datei-zu-PDF-Konverter
-├── tests/                         # 🧪 Test-Suite
-│   ├── test_comprehensive.py      # 📋 Umfassende Tests
-│   ├── test_api.py                # 🌐 API-Tests
-│   └── test_guardrails.py         # 🛡️ Guardrails-Tests
+├── tests/                         # 🧪 Test-Suite (optional)
+│   └── (weitere Test-Dateien)     # � Ergänzende Tests
 ├── main.py                        # 🚀 FastAPI-Anwendung
 ├── test_hybrid_guardrails.py     # �️ Guardrails-Tests
 ├── test_complete_system.py       # 🧪 System-Tests
@@ -436,7 +432,6 @@ python test_complete_system.py
 # Development Tasks
 python tasks.py dev-setup      # Entwicklungsumgebung einrichten
 python tasks.py test-unit      # Unit Tests ausführen
-python tasks.py test-coverage  # Coverage Reports
 python tasks.py format         # Code formatieren
 python tasks.py lint          # Code-Qualität prüfen
 python tasks.py help          # Alle verfügbaren Tasks
@@ -466,32 +461,21 @@ python test_complete_system.py      # Komplette Integration
 
 # Development Tasks
 python tasks.py test-unit            # Unit Tests
-python tasks.py test-coverage        # Tests mit Coverage
 python tasks.py dev-setup           # Entwicklungsumgebung
 
-# Mit pytest direkt (falls verfügbar)
-.venv\Scripts\activate
-python -m pytest tests/ -v                    # Alle Tests
-python -m pytest tests/test_comprehensive.py -v  # Comprehensive Tests
-python -m pytest tests/test_api.py -v         # API Tests
-python -m pytest tests/test_guardrails.py -v  # Guardrails Tests
-
-# Coverage Report generieren
-python -m pytest --cov=src --cov-report=html --cov-report=term
+# Direkte Test-Skripte
+python test_hybrid_guardrails.py    # Guardrails-System testen
+python test_complete_system.py      # Komplette Integration
 ```
 
 **📁 Verfügbare Test-Dateien**:
 - **`test_hybrid_guardrails.py`** - Hybrid LLM+Regex Guardrails-Tests
 - **`test_complete_system.py`** - Komplette System-Integration-Tests
 - **`tasks.py`** - Entwicklungsaufgaben-Manager und Test-Runner
-- **`tests/`** (falls vorhanden) - Pytest-basierte Test-Suite
 
-### 📊 Coverage-Reports
+### 📊 Test-Output
 
-Nach dem Ausführen der Tests mit Coverage:
-- **HTML-Report**: `htmlcov/index.html`
-- **Terminal-Report**: Direkte Ausgabe
-- **XML-Report**: `coverage.xml` (für CI/CD)
+Die Test-Skripte liefern strukturierte Ausgaben zur Validierung der Guardrails-Funktionalität.
 
 ## 📊 Monitoring
 
@@ -522,13 +506,9 @@ python tasks.py dev-setup
 
 # Code formatieren
 python tasks.py format
-.venv\Scripts\python.exe -m black src/ tests/
-.venv\Scripts\python.exe -m isort src/ tests/
 
 # Code prüfen  
 python tasks.py lint
-.venv\Scripts\python.exe -m flake8 src/
-.venv\Scripts\python.exe -m mypy src/
 
 # Dependencies installieren
 python tasks.py install-dev
