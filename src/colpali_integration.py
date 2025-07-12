@@ -154,12 +154,15 @@ class COLPALIProcessor:
                     )
 
             if missing_files:
-                logger.warning(
-                    f"Model cache incomplete. Missing files: {missing_files}"
+                logger.info(
+                    "📥 COLPALI Model wird heruntergeladen (erste Ausführung ist normal)..."
+                )
+                logger.info(
+                    f"🔄 Fehlende Dateien: {len(missing_files)} - Download startet automatisch"
                 )
                 return False
 
-            logger.info(f"Model fully cached at: {latest_snapshot}")
+            logger.info(f"✅ COLPALI Model vollständig gecacht: {latest_snapshot}")
             return True
 
         except Exception as e:
@@ -367,7 +370,9 @@ class COLPALIProcessor:
         with torch.inference_mode():
             # Process text query inputs - this creates different embeddings than images
             query_inputs = self.processor.process_queries([query]).to(self.device)
-            query_embedding = self.model(**query_inputs)
+            
+            # Process query with model (for proper scoring later)
+            _ = self.model(**query_inputs)
 
             # For COLPALI queries, the embedding shape is different from document embeddings
             # We need to use the processor's scoring method rather than direct vector comparison

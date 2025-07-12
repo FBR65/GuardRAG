@@ -14,7 +14,8 @@ from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic import BaseModel, Field
 
-from .colpali_integration import COLPALIProcessor, RetrievalResult
+from .colpali_integration import RetrievalResult
+from .colpali_manager import COLPALIManager
 from .modern_input_guardrail import ModernInputGuardrail, InputValidationResult
 from .output_guardrail import OutputGuardrail, OutputValidationResult
 from .qdrant_integration import QdrantConfig
@@ -108,14 +109,14 @@ class EnhancedGuardRAGAgent:
 
         logger.info("Initializing Enhanced GuardRAG components...")
 
-        # Initialisiere COLPALI processor mit Qdrant
+        # Initialisiere COLPALI processor mit Qdrant (using shared manager)
         qdrant_config = QdrantConfig(
             host=qdrant_host,
             port=qdrant_port,
             url=qdrant_url,
             api_key=qdrant_api_key,
         )
-        self.colpali = COLPALIProcessor(
+        self.colpali = COLPALIManager.get_instance(
             model_name=colpali_model,
             device=device,
             qdrant_config=qdrant_config,
@@ -158,13 +159,9 @@ class EnhancedGuardRAGAgent:
         try:
             # Verwende denselben Ansatz wie im rag_agent.py
             provider = OpenAIProvider(
-                base_url=self.llm_endpoint, 
-                api_key=self.llm_api_key or "dummy"
+                base_url=self.llm_endpoint, api_key=self.llm_api_key or "dummy"
             )
-            model = OpenAIModel(
-                provider=provider, 
-                model_name=self.llm_model
-            )
+            model = OpenAIModel(provider=provider, model_name=self.llm_model)
 
             self.generation_agent = Agent(
                 model=model,

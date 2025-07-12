@@ -13,7 +13,8 @@ from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic import BaseModel, Field
 
-from .colpali_integration import COLPALIProcessor, RetrievalResult
+from .colpali_integration import RetrievalResult
+from .colpali_manager import COLPALIManager
 from .output_guardrail import OutputGuardrail, OutputValidationResult
 from .qdrant_integration import QdrantConfig
 
@@ -84,14 +85,14 @@ class GuardRAGAgent:
         # Initialize components
         logger.info("Initializing GuardRAG components...")
 
-        # Initialize COLPALI processor with Qdrant
+        # Initialize COLPALI processor with Qdrant (using shared manager)
         qdrant_config = QdrantConfig(
             host=qdrant_host,
             port=qdrant_port,
             url=qdrant_url,
             api_key=qdrant_api_key,
         )
-        self.colpali = COLPALIProcessor(
+        self.colpali = COLPALIManager.get_instance(
             model_name=colpali_model,
             device=device,
             qdrant_config=qdrant_config,

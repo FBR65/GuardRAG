@@ -47,27 +47,45 @@ class QdrantVectorStore:
         self._ensure_collection()
 
     def _init_client(self) -> QdrantClient:
-        """Initialize Qdrant client."""
+        """Initialize Qdrant client with proper error handling."""
         try:
             if self.config.url:
                 client = QdrantClient(
                     url=self.config.url,
                     api_key=self.config.api_key,
                 )
+                connection_info = f"URL: {self.config.url}"
             else:
                 client = QdrantClient(
                     host=self.config.host,
                     port=self.config.port,
                 )
+                connection_info = f"Host: {self.config.host}:{self.config.port}"
 
             # Test connection
+            logger.info(f"Testing Qdrant connection to {connection_info}...")
             client.get_collections()
-            logger.info("Qdrant client initialized successfully")
+            logger.info(
+                f"✅ Qdrant client initialized successfully ({connection_info})"
+            )
             return client
 
         except Exception as e:
-            logger.error(f"Failed to initialize Qdrant client: {e}")
-            raise
+            error_msg = f"❌ Failed to connect to Qdrant ({connection_info}): {str(e)}"
+            logger.error(error_msg)
+
+            # Provide helpful error message
+            if "Connection refused" in str(e) or "10061" in str(e):
+                suggestion = (
+                    "\n💡 Qdrant ist nicht erreichbar. Bitte starten Sie Qdrant:\n"
+                    "   • Docker: docker-compose up qdrant\n"
+                    "   • Lokal: qdrant --config-path config.yaml\n"
+                    f"   • Prüfen Sie die Verbindung: {connection_info}"
+                )
+                logger.error(suggestion)
+                raise ConnectionError(f"{error_msg}{suggestion}")
+            else:
+                raise ConnectionError(error_msg)
 
     def _ensure_collection(self):
         """Ensure collection exists."""

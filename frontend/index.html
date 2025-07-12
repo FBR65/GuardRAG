@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GuardRAG Frontend</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 30px;
+        }
+        
+        .tab {
+            padding: 15px 30px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1rem;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: bold;
+        }
+        
+        .tab:hover {
+            background: #f8f9fa;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .status {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5a6fd8;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            margin: 8px 0;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .chat-area {
+            height: 400px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow-y: auto;
+            padding: 15px;
+            background: white;
+        }
+        
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        .user-message {
+            background: #e3f2fd;
+            margin-left: 50px;
+        }
+        
+        .bot-message {
+            background: #f3e5f5;
+            margin-right: 50px;
+        }
+        
+        .file-list {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #4caf50;
+            transition: width 0.3s;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .source {
+            background: #f0f8ff;
+            border: 1px solid #0066cc;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ GuardRAG System</h1>
+            <p>Sichere Dokumentenverarbeitung und RAG-Kommunikation</p>
+        </div>
+        
+        <div class="content">
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('status')">📊 System Status</button>
+                <button class="tab" onclick="showTab('upload')">📁 Upload</button>
+                <button class="tab" onclick="showTab('chat')">💬 Chat</button>
+                <button class="tab" onclick="showTab('security')">🔒 Sicherheit</button>
+            </div>
+            
+            <!-- Status Tab -->
+            <div id="status" class="tab-content active">
+                <div class="card">
+                    <h3>🚀 System Status</h3>
+                    <div id="systemStatus">
+                        <div class="loading"></div>Lade System-Status...
+                    </div>
+                    <button onclick="checkSystemStatus()">🔄 Status aktualisieren</button>
+                </div>
+                
+                <div class="card">
+                    <h3>📊 Detaillierte Systeminfo</h3>
+                    <div id="systemInfo">
+                        <strong>Frontend:</strong> HTML/JavaScript mit FastAPI Integration<br>
+                        <strong>Backend:</strong> <span id="backendStatus">Prüfe Verbindung...</span><br>
+                        <strong>Zeit:</strong> <span id="currentTime"></span><br>
+                        <strong>Browser:</strong> <span id="browserInfo"></span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>⚙️ COLPALI Status</h3>
+                    <div id="colpaliStatus">
+                        <div class="loading"></div>Lade COLPALI-Informationen...
+                    </div>
+                    <button onclick="loadColpaliStats()">📊 COLPALI Stats laden</button>
+                    <button onclick="clearColpaliCache()">🗑️ Cache leeren</button>
+                </div>
+            </div>
+            
+            <!-- Upload Tab -->
+            <div id="upload" class="tab-content">
+                <div class="card">
+                    <h3>📁 Datei Upload</h3>
+                    <input type="file" id="fileInput" accept=".pdf,.txt,.docx,.doc,.md,.html,.htm">
+                    <div class="progress-bar" id="uploadProgress" style="display: none;">
+                        <div class="progress-fill" id="uploadProgressFill"></div>
+                    </div>
+                    <button onclick="uploadFile()" id="uploadBtn">📤 Datei hochladen</button>
+                    <div id="uploadStatus"></div>
+                </div>
+                
+                <div class="card">
+                    <h3>📋 Dokumentenmanagement</h3>
+                    <div id="fileList" class="file-list">
+                        <em>Lade Dokumenten-Status...</em>
+                    </div>
+                    <button onclick="clearAllDocuments()">🗑️ Alle Dokumente löschen</button>
+                </div>
+            </div>
+            
+            <!-- Chat Tab -->
+            <div id="chat" class="tab-content">
+                <div class="grid">
+                    <div>
+                        <h3>💬 RAG Chat</h3>
+                        <div id="chatArea" class="chat-area">
+                            <div class="message bot-message">
+                                🤖 Hallo! Ich bin GuardRAG. Stellen Sie Fragen zu Ihren hochgeladenen Dokumenten.
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <input type="text" id="chatInput" placeholder="Ihre Frage..." onkeypress="handleEnter(event)">
+                            <button onclick="sendMessage()" id="sendBtn">📤</button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3>⚙️ Chat-Einstellungen</h3>
+                        <div class="card">
+                            <label>RAG-Modus:</label>
+                            <select id="ragMode">
+                                <option value="standard">🤖 Standard RAG</option>
+                                <option value="enhanced">🛡️ Enhanced RAG (mit PII-Schutz)</option>
+                            </select>
+                            
+                            <label>Sammlung (Enhanced):</label>
+                            <input type="text" id="collection" value="default_collection">
+                            
+                            <button onclick="clearChat()">🗑️ Chat leeren</button>
+                        </div>
+                        
+                        <div class="card">
+                            <h3>📊 Letzte Antwort</h3>
+                            <div id="lastResponseInfo">
+                                <em>Noch keine Abfrage durchgeführt</em>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Security Tab -->
+            <div id="security" class="tab-content">
+                <div class="card">
+                    <h3>🔒 Sicherheitsstatistiken</h3>
+                    <div id="securityStats">
+                        <div class="loading"></div>Lade Sicherheitsstatistiken...
+                    </div>
+                    <button onclick="loadSecurityStats()">🔄 Statistiken aktualisieren</button>
+                </div>
+                
+                <div class="card">
+                    <h3>⚙️ Sicherheitseinstellungen</h3>
+                    <label>Sicherheitslevel:</label>
+                    <select id="securityLevel">
+                        <option value="low">🟢 Niedrig</option>
+                        <option value="medium" selected>🟡 Mittel</option>
+                        <option value="high">🔴 Hoch</option>
+                    </select>
+                    <button onclick="updateSecurityLevel()">💾 Level aktualisieren</button>
+                    
+                    <div id="securityUpdateStatus"></div>
+                </div>
+                
+                <div class="card">
+                    <h3>🏢 Konkurrenten-Filter</h3>
+                    <textarea id="competitorList" rows="3" placeholder="Konkurrenznamen eingeben (ein Name pro Zeile)"></textarea>
+                    <button onclick="updateCompetitors()">💾 Konkurrenten aktualisieren</button>
+                    <div id="competitorUpdateStatus"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
